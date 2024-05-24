@@ -1,2 +1,6 @@
 *.pyc
+.env/
+test/
+
 runs/*
+!runs/example_run

@@ -25,7 +25,7 @@ def format_result(classes, lbl, pred, k_width=20, d_width=32):
 
     prgstr = "+" * round(scale * tp_tot)
     fstr = "x" * round(scale * fp_tot)
-    
+
     outstr += "-" * 100 + "\n"
     outstr += f"{'TOTAL': >{k_width}} {prgstr: >{d_width}}|{fstr: <{d_width}}\n\n"
     outstr += "-" * 100 + "\n"

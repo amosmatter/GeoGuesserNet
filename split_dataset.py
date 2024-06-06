@@ -1,3 +1,15 @@
+"""
+Author:
+-------
+- Amos Matter (mail@amosmatter.ch)
+
+License:
+--------
+- MIT License
+
+"""
+
+
 from pathlib import Path
 import random
 import shutil

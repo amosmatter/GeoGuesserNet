@@ -1,3 +1,14 @@
+"""
+Author:
+-------
+- Amos Matter (mail@amosmatter.ch)
+
+License:
+--------
+- MIT License
+
+"""
+
 from matplotlib import pyplot as plt
 import torch
 from torch import nn
@@ -8,7 +19,7 @@ import pandas as pd
 
 @contextmanager
 def torch_persistent_model(
-    model_f, model_path, logger_path=None, logger_cols=None, store_finally=False
+    model_f, model_path, logger_path=None, logger_cols=None, store_finally=False,device="cpu"
 ):
     model = model_f()
 
@@ -26,11 +37,13 @@ def torch_persistent_model(
         logger = None
 
     try:
-        model.load_state_dict(torch.load(model_path))
-    except:
+        model.load_state_dict(torch.load(model_path, map_location=device))
+    except Exception as e:
+        print(e)
+        print("Couldn't load model at", model_path)
         model = model_f()
 
-    model = model.to("cuda")
+    model = model.to(device)
 
     try:
         yield model, logger
@@ -44,7 +57,7 @@ DEBUG = False
 def eval_image(image, model, transform, chosen_classnames):
 
     image = transform(image)
-    image = image.to("cuda")
+    #image = image.to("cuda")
     image = image.unsqueeze(0)
     if DEBUG:
         plt.imshow(image.cpu().squeeze().permute(1, 2, 0).numpy())

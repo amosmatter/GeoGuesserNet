@@ -1,3 +1,14 @@
+"""
+Author:
+-------
+- Amos Matter (mail@amosmatter.ch)
+
+License:
+--------
+- MIT License
+
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -5,54 +16,42 @@ from pathlib import Path
 from scipy.signal import savgol_filter
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
+from eval_run import parse_logs
+
 
 PROJ_FOLDER = Path(__file__).resolve().parent
-LOG_FOLDER = PROJ_FOLDER / "runs" / "run_1" / "logs"
+RUN_FOLDER = PROJ_FOLDER / "runs" / "run_1"
+LOG_FOLDER = RUN_FOLDER / "logs"
 
 
-bigdf = pd.DataFrame()
-for f in LOG_FOLDER.glob("*.csv"):
-    print(f)
-    df = pd.read_csv(f)
-    bigdf = pd.concat([bigdf, df])
+if __name__ == "__main__":
+    fig = plt.figure()
 
-bigdf.sort_values(by="timestamp", inplace=True)
-fig = plt.figure()
+    bigdf, f1 = parse_logs(LOG_FOLDER)
+    y = bigdf["loss"] / 16
+    loss_smooth = savgol_filter(y, len(bigdf) // 10, 3)
+    ts = bigdf["timestamp"].to_numpy()
+    ts = ts - ts[0]
 
-biglbl = ";".join(bigdf["labels"])
-bigpred = ";".join(bigdf["preds"])
+    tstest = np.load(RUN_FOLDER / "test_t.npy").astype(float)
+    ystest = np.load(RUN_FOLDER / "test_y.npy")
 
+    print(tstest, ystest)
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2)
+    window_sz = len(bigdf) // 100
 
-biglbl = np.array(
-    [
-        np.fromstring(biglbl, dtype=int, sep=";"),
-        np.fromstring(bigpred, dtype=int, sep=";"),
-    ]
-)
-print(biglbl)
-window_sz = len(bigdf) // 100
-row_sz = 16 * window_sz
-n_rows = biglbl.shape[1] // row_sz
-biglbl = biglbl[:, : n_rows * row_sz]
+    # ax.scatter(bigdf["timestamp"], y, color="b", s=1)
+    # ax.plot(bigdf["timestamp"], loss_smooth, color="r")
+    ax1.semilogx(ts, loss_smooth, color="r")
+    ax1.scatter(tstest - tstest[0], ystest, color="b", s=5)
+    ax1.set_ylabel("loss")
+    ax1.set_xlabel("training time (s)")
+    # ax2.semilogx(tstest - tstest[0], ystest, color="r")
+    ax2.semilogx(np.arange(len(f1)), f1)
+    ax2.set_ylabel("f1 score")
+    ax2.set_xlabel("percent of training done")
+    # ax2 = ax1.twinx()
+    # ax2.plot(bigdf["timestamp"], bigdf["epoch"], color="black")
 
-f1 = []
-for i in range(n_rows):
-    lbl = biglbl[0, i * row_sz : (i + 1) * row_sz]
-    pred = biglbl[1, i * row_sz : (i + 1) * row_sz]
-    f1.append(f1_score(lbl, pred, average="macro", zero_division=0))
-
-
-y = bigdf["loss"] / 16
-loss_smooth = savgol_filter(y, len(bigdf) // 10, 3)
-ts = bigdf["timestamp"].to_numpy()
-ts = ts - ts[0] 
-ax = fig.add_subplot(111)
-# ax.scatter(bigdf["timestamp"], y, color="b", s=1)
-# ax.plot(bigdf["timestamp"], loss_smooth, color="r")
-ax.semilogx(ts[window_sz - 1 :: window_sz] , f1, color="r")
-
-# ax2 = ax.twinx()
-# ax2.plot(bigdf["timestamp"], bigdf["epoch"], color="black")
-
-
-plt.show()
+    plt.show()

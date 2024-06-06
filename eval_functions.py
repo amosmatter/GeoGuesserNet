@@ -1,7 +1,47 @@
+"""
+Author:
+-------
+- Amos Matter (mail@amosmatter.ch)
+
+License:
+--------
+- MIT License
+
+"""
+
 # %%
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import torch
 import numpy as np
+from torch import nn
+
+
+GEO_CATEGORIES = {
+    "NORTH_USA_CA": [
+        "WashingtonDC",
+        "Boston",
+        "TRT",
+        "Minneapolis",
+        "Chicago",
+    ],
+    "SOUTH_USA_AU": [
+        "Miami",
+        "Phoenix",
+        "Melbourne",
+    ],
+    "SE_ASIA": [
+        "Bangkok",
+        "Osaka",
+    ],
+    "MED_EUROPE": [
+        "Madrid",
+        "Barcelona",
+        "Lisbon",
+        "Rome",
+    ],
+    "TEMP_EUROPE": ["PRG", "PRS", "Brussels", "OSL", "London"],
+}
+INVERTED_CATEGORIES = {v: k for k, vs in GEO_CATEGORIES.items() for v in vs}
 
 
 def format_result(classes, lbl, pred, k_width=20, d_width=32):
@@ -44,35 +84,40 @@ F1:         {f1:.3f}
     return outstr
 
 
-def test(n_batches, model, test_dataset, test_loader):
+def test_model(model, test_loader, n_batches=-1, device="cuda"):
     model.eval()
-    print("=" * 100)
-
-    print("Testing...")
-    sums = {
-        classname: {"false positive": 0, "true positive": 0, "occurrences": 0}
-        for classname in test_dataset.classes
-    }
-    predictedaccum = np.array([])
-    lblsaccum = np.array([])
     ctr = 0
-    with torch.no_grad():
+    lbl, pred = torch.Tensor([]), torch.Tensor([])
+    criterion = nn.CrossEntropyLoss()
+    running_loss = 0
+    n_processed = 0
 
+    lbls_accum = np.array([])
+    pred_accum = np.array([])
+
+    with torch.no_grad():
         for inputs, labels in test_loader:
-            if ctr >= n_batches:
+            print("run")
+            if ctr >= n_batches and n_batches != -1:
                 break
             ctr += 1
 
-            inputs, labels = inputs.to("cuda"), labels.to("cuda")
+            inputs_batch, labels_batch = inputs.to(device), labels.to(device)
 
-            outputs = model(inputs)
+            outputs_batch = model(inputs_batch)
+            loss = criterion(outputs_batch, labels_batch)
+            step_loss = loss.item()
 
-            lbl: np.ndarray = labels.cpu().detach().numpy()
-            outputs: np.ndarray = torch.argmax(outputs, dim=1).cpu().detach().numpy()
+            n_processed += len(inputs)
+            running_loss += step_loss
+            print(step_loss)
+            print(len(inputs))
+            lbl: np.ndarray = labels_batch.cpu().detach().numpy()
+            outputs: np.ndarray = torch.argmax(outputs_batch, dim=1).cpu().detach().numpy()
 
-            predictedaccum = np.concatenate((predictedaccum, outputs))
-            lblsaccum = np.concatenate((lblsaccum, lbl))
+            lbls_accum = np.concatenate((lbls_accum, lbl))
+            pred_accum = np.concatenate((pred_accum, outputs))
 
-    print(format_result(test_dataset.classes, lblsaccum, predictedaccum))
+    epoch_loss = running_loss / n_processed
 
-    print("=" * 100)
+    return lbls_accum, pred_accum, epoch_loss

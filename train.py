@@ -1,3 +1,14 @@
+"""
+Author:
+-------
+- Amos Matter (mail@amosmatter.ch)
+
+License:
+--------
+- MIT License
+
+"""
+
 # %%
 from pathlib import Path
 import numpy as np
@@ -13,7 +24,7 @@ import keyboard
 import time
 
 from model import torch_persistent_model
-from eval_functions import format_result,  test
+from eval_functions import format_result,  test_model
 
 # %%
 N_EPOCHS = 50
@@ -139,7 +150,7 @@ with torch_persistent_model(
                 exit()
             if keyboard.is_pressed("space"):
 
-                test(50, model, test_dataset, test_loader)
+                test_model(50, model, test_dataset, test_loader)
                 model.train()
                 discard_pending_input()
 
